@@ -9,8 +9,6 @@ public class FileController(
     IHttpClientFactory factory,
     ILogger<FileController> logger)
     : ControllerBase {
-    
-    
     private const long MaxDcChunkSize = 25 * 1024 * 1024; // 25MB
 
     private readonly HttpClient _httpClient = factory.CreateClient("default");
@@ -38,6 +36,11 @@ public class FileController(
             return;
         }
 
+        var msg = await channel.GetMessageAsync(files.First().MessageId);
+        Response.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") {
+            FileName = msg.Attachments.First().Filename
+        }.ToString();
+
         var rangeHeader = Request.Headers.Range;
         if (!string.IsNullOrEmpty(rangeHeader)) await ProcessRangeRequest(channel, files, rangeHeader, ct);
         else await ProcessFullFileRequest(channel, files, ct);
@@ -63,7 +66,7 @@ public class FileController(
             if (msg is null) continue;
             await msg.DeleteAsync();
         }
-        
+
         await repository.DeleteAsync(files, ct);
         return Ok();
     }

@@ -70,7 +70,7 @@ public class FileController(
 
     private async Task<bool> Upload(IFormFile file, string fileName, CancellationToken ct) {
         await using var stream = file.OpenReadStream();
-        return await Upload(stream, file.Name, fileName, ct);
+        return await Upload(stream, file.FileName, fileName, ct);
     }
 
     private async Task<bool> Upload(Stream stream, string downloadFileName, string fileName, CancellationToken ct) {

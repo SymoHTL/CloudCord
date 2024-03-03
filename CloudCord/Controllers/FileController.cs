@@ -1,7 +1,7 @@
 ﻿namespace CloudCord.Controllers;
 
 [ApiController]
-[Route("api")]
+[Route("api/files")]
 public class FileController(
     DcMsgService dcMsgService,
     Repository<FileEntry> repository,

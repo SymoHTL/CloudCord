@@ -12,8 +12,7 @@ public class FileController(
     private const long MaxDcChunkSize = 25 * 1024 * 1024; // 25MB
 
     private readonly HttpClient _httpClient = factory.CreateClient("default");
-    private readonly ILogger<FileController> _logger = logger;
-    private readonly Random _random = new(DateTime.Now.Millisecond * DateTime.Now.Second);
+    private readonly Random _random = new();
 
     private string RandomFileName(int length = 64) {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -22,15 +21,15 @@ public class FileController(
     }
 
 
-    [HttpGet("{fileName}")]
-    public async Task Stream(string fileName, CancellationToken ct) {
+    [HttpGet("{fileId}")]
+    public async Task Stream(string fileId, CancellationToken ct) {
         var channel = await dcMsgService.GetChannel(cfg.Value.GuildId, cfg.Value.ChannelId);
         if (channel is null) {
             await RespondNotFound("Channel not found", ct);
             return;
         }
 
-        var files = await repository.ReadAsync(f => f.FileName == fileName, f => f.StartByte, ct);
+        var files = await repository.ReadAsync(f => f.FileId == fileId, f => f.StartByte, ct);
         if (files.Count == 0) {
             await RespondNotFound("File not found", ct);
             return;
@@ -56,11 +55,33 @@ public class FileController(
         return Ok(fileName);
     }
 
-    [HttpDelete("{fileName}")]
-    public async Task<IActionResult> Delete(string fileName, CancellationToken ct) {
-        var files = await repository.ReadAsync(f => f.FileName == fileName, f => f.StartByte, ct);
+    [HttpPost("chunked")]
+    public async Task<ActionResult<ReadChunkDto>> UploadChunk([Required] IFormFile chunkFile, string? fileId,
+        [Required] long startByte, CancellationToken ct) {
+        if (fileId is null) fileId = RandomFileName();
+        else {
+            var files = await repository.ReadAsync(f => f.FileId == fileId, ct);
+            if (files.Count == 0) return BadRequest("File does not exist");
+        }
+
+        var success = await Upload(chunkFile, fileId, ct, startByte);
+        if (!success) return BadRequest("Failed to upload to discord");
+        
+        return Ok(new ReadChunkDto {
+            FileId = fileId,
+            StartByte = startByte,
+            EndByte = startByte + chunkFile.Length
+        });
+    }
+
+    [HttpDelete("{fileId}")]
+    public async Task<IActionResult> Delete(string fileId, CancellationToken ct) {
+        var files = await repository.ReadAsync(f => f.FileId == fileId, f => f.StartByte, ct);
         var channel = await dcMsgService.GetChannel(cfg.Value.GuildId, cfg.Value.ChannelId);
         if (channel is null) return NotFound("Channel not found");
+        
+        logger.LogInformation("Deleting {FileId} from discord - {ChannelId}", fileId, channel.Id);
+        
         foreach (var file in files) {
             var msg = await channel.GetMessageAsync(file.MessageId);
             if (msg is null) continue;
@@ -71,17 +92,18 @@ public class FileController(
         return Ok();
     }
 
-    private async Task<bool> Upload(IFormFile file, string fileName, CancellationToken ct) {
+    private async Task<bool> Upload(IFormFile file, string fileId, CancellationToken ct, long startByte = 0) {
         await using var stream = file.OpenReadStream();
-        return await Upload(stream, file.FileName, fileName, ct);
+        return await Upload(stream, fileId, file.FileName, ct, startByte);
     }
 
-    private async Task<bool> Upload(Stream stream, string downloadFileName, string fileName, CancellationToken ct) {
+    private async Task<bool> Upload(Stream stream, string fileId, string downloadFileName, CancellationToken ct, long startByte = 0) {
         var channel = await dcMsgService.GetChannel(cfg.Value.GuildId, cfg.Value.ChannelId);
         if (channel is null) return false;
+        logger.LogInformation("Uploading file {FileId} to discord - {ChannelId}", fileId, channel.Id);
 
         var buffer = new byte[MaxDcChunkSize];
-        var endByte = 0L;
+        var endByte = startByte;
         int bytesRead;
         var messages = new List<FileEntry>();
 
@@ -90,10 +112,10 @@ public class FileController(
             var msg = await channel.SendFileAsync(ms, downloadFileName);
             await ms.DisposeAsync();
             if (msg is null) return false;
-            var startByte = endByte;
+            startByte = endByte;
             endByte += msg.Attachments.Sum(a => a.Size);
             messages.Add(new FileEntry {
-                FileName = fileName,
+                FileId = fileId,
                 Size = msg.Attachments.Sum(a => a.Size),
                 StartByte = startByte,
                 EndByte = endByte,
@@ -123,7 +145,7 @@ public class FileController(
             var msg = await channel.GetMessageAsync(entry.MessageId);
             var dataStream = await _httpClient.GetStreamAsync(msg.Attachments.First().Url, ct);
             await dataStream.CopyToAsync(output, ct);
-            await dataStream.DisposeAsync();
+            await dataStream.DisposeAsync(); // Manually dispose to immediately release resources
         }
     }
 
@@ -162,6 +184,7 @@ public class FileController(
             if (dataStream is not MemoryStream) {
                 var ms = new MemoryStream();
                 await dataStream.CopyToAsync(ms, ct);
+                await dataStream.DisposeAsync(); // Manually dispose to immediately release resources
                 dataStream = ms;
             }
 
@@ -175,7 +198,7 @@ public class FileController(
                 length -= bytesRead;
             }
 
-            await dataStream.DisposeAsync();
+            await dataStream.DisposeAsync(); // Manually dispose to immediately release resources
         }
     }
 

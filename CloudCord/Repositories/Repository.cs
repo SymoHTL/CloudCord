@@ -9,6 +9,12 @@ public class Repository<TEntity> where TEntity : class {
         Table = Context.Set<TEntity>();
     }
 
+    public async Task<List<TEntity>> ReadAsync(Expression<Func<TEntity, bool>> filter, CancellationToken order) {
+        return await Table.AsNoTracking()
+            .Where(filter)
+            .ToListAsync(order);
+    }
+
     public async Task<List<TEntity>> ReadAsync(Expression<Func<TEntity, bool>> filter,
         Expression<Func<TEntity, object>> order, CancellationToken ct) {
         return await Table.AsNoTracking()
@@ -26,5 +32,4 @@ public class Repository<TEntity> where TEntity : class {
         Table.RemoveRange(entities);
         await Context.SaveChangesAsync(ct);
     }
-
 }

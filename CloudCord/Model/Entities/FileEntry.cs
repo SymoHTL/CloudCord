@@ -4,7 +4,9 @@
 public class FileEntry : IEntityTypeConfiguration<FileEntry> {
     [Key] public ulong MessageId { get; set; }
 
-    [Required] [StringLength(70)] public string FileName { get; set; } = null!;
+    [Required]
+    [StringLength(100, MinimumLength = 60)]
+    public string FileId { get; set; } = null!;
 
     public long StartByte { get; set; }
     public long EndByte { get; set; }

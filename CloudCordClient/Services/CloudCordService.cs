@@ -93,11 +93,12 @@ public class CloudCordService(
 
     private async Task<ReadChunkDto?> UploadChunk(ReadOnlyMemory<byte> chunk, string downloadFileName, string? fileId, long startByte, CancellationToken ct) {
         var content = new MultipartFormDataContent();
-        content.Add(new ReadOnlyMemoryContent(chunk), "file", downloadFileName);
+        content.Add(new ReadOnlyMemoryContent(chunk), "chunkFile", downloadFileName);
         content.Add(new StringContent(startByte.ToString(CultureInfo.InvariantCulture)), "startByte");
         if (fileId is not null) content.Add(new StringContent(fileId), "fileId");
 
         var response = await _backend.PostAsync("api/files/chunked", content, ct);
+        Console.WriteLine(await response.Content.ReadAsStringAsync(ct));
         response.EnsureSuccessStatusCode();
         
         return await response.Content.ReadFromJsonAsync<ReadChunkDto>(ct);

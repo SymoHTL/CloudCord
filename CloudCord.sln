@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csp
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudCordClient", "CloudCordClient\CloudCordClient.csproj", "{1F5E492A-AD93-4C24-B4A1-34F7B5784F8C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UnitTests", "UnitTests\UnitTests.csproj", "{6DC2044B-8248-4F4A-92D1-51188C178251}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{1F5E492A-AD93-4C24-B4A1-34F7B5784F8C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{1F5E492A-AD93-4C24-B4A1-34F7B5784F8C}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{1F5E492A-AD93-4C24-B4A1-34F7B5784F8C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6DC2044B-8248-4F4A-92D1-51188C178251}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6DC2044B-8248-4F4A-92D1-51188C178251}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6DC2044B-8248-4F4A-92D1-51188C178251}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6DC2044B-8248-4F4A-92D1-51188C178251}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

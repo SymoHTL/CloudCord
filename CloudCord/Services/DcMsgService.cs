@@ -5,23 +5,21 @@ using Discord.Interactions;
 namespace CloudCord.Services;
 
 public class DcMsgService(ILogger<DcMsgService> logger, IOptions<DiscordCfg> dcCfg, IServiceProvider sP) {
-    private List<DiscordSocketClient> Clients { get; } = [];
+    private DiscordSocketClient[] Clients { get; set; } = [];
     private SemaphoreSlim Semaphore { get; } = new(1, 1);
 
-    public async Task<SocketTextChannel?> GetChannel(ulong guildId, ulong channelId) {
+    public async Task<SocketTextChannel?> GetChannelAsync(ulong guildId, ulong channelId) {
         await Semaphore.WaitAsync();
         try {
-            var client = Clients[Random.Shared.Next(Clients.Count)];
+            var client = Clients[Random.Shared.Next(Clients.Length)];
             var guild = client.GetGuild(guildId);
             var channel = guild?.GetTextChannel(channelId);
             if (channel == null) {
-                logger.LogError("Channel {Channel} not found in guild {Guild} - {SocketClient}", channelId, guildId,
-                    client.CurrentUser.Username);
+                logger.LogError("Channel {Channel} not found in guild {Guild}", channelId, guildId);
                 return null;
             }
 
-            logger.LogInformation("Getting channel {Channel} from guild {Guild} - {SocketClient}", channel.Name,
-                guild?.Name, client.CurrentUser.Username);
+            logger.LogInformation("Getting channel {Channel} from guild {Guild}", channelId, guildId);
             return channel;
         }
         finally {
@@ -29,9 +27,62 @@ public class DcMsgService(ILogger<DcMsgService> logger, IOptions<DiscordCfg> dcC
         }
     }
 
+    public async Task<IMessage> GetMessageAsync(ulong id) {
+        SocketTextChannel? channel;
+        await Semaphore.WaitAsync();
+        try {
+            var client = Clients[Random.Shared.Next(Clients.Length)];
+            var guild = client.GetGuild(dcCfg.Value.GuildId);
+            channel = guild?.GetTextChannel(dcCfg.Value.ChannelId);
+        }
+        finally {
+            Semaphore.Release();
+        }
+
+        if (channel != null) return await channel.GetMessageAsync(id);
+
+        logger.LogError("Channel {Channel} not found in guild {Guild}", dcCfg.Value.ChannelId, dcCfg.Value.GuildId);
+        throw new InvalidOperationException("Channel not found");
+    }
+
+
+    public async IAsyncEnumerable<IMessage> GetMessagesAsync(IEnumerable<ulong> ids) {
+        var idsArray = ids.ToArray();
+        var tasks = new List<Task<IMessage>>();
+        var localClients = new List<DiscordSocketClient>();
+
+        await Semaphore.WaitAsync();
+        try {
+            localClients.AddRange(Clients);
+        }
+        finally {
+            Semaphore.Release();
+        }
+
+        for (var i = 0; i < idsArray.Length; i++) {
+            var client = localClients[i % localClients.Count];
+            var guild = client.GetGuild(dcCfg.Value.GuildId);
+            var channel = guild?.GetTextChannel(dcCfg.Value.ChannelId);
+
+            if (channel != null) {
+                tasks.Add(channel.GetMessageAsync(idsArray[i]));
+            }
+            else {
+                logger.LogError("Channel {Channel} not found in guild {Guild}", dcCfg.Value.ChannelId,
+                    dcCfg.Value.GuildId);
+                throw new InvalidOperationException("Channel not found");
+            }
+        }
+
+        foreach (var task in tasks) yield return await task;
+    }
+
     public async Task InitAsync(IEnumerable<string> tokens) {
         var tasks = new List<Task>();
-        foreach (var token in tokens) {
+        var enumerable = tokens as string[] ?? tokens.ToArray();
+        Clients = new DiscordSocketClient[enumerable.Length];
+        for (var i = 0; i < enumerable.Length; i++) {
+            var token = enumerable[i];
             var client = new DiscordSocketClient(new DiscordSocketConfig { GatewayIntents = GatewayIntents.All });
             var interactionService = new InteractionService(client.Rest);
             client.Log += msg => {
@@ -50,7 +101,7 @@ public class DcMsgService(ILogger<DcMsgService> logger, IOptions<DiscordCfg> dcC
             };
 
             tasks.Add(StartClientAsync(client, token));
-            Clients.Add(client);
+            Clients[i] = client;
         }
 
         await Task.WhenAll(tasks);

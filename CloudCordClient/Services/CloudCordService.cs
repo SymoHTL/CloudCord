@@ -1,4 +1,5 @@
-﻿using CloudCordClient.Exceptions;
+﻿using System.Globalization;
+using CloudCordClient.Exceptions;
 
 namespace CloudCordClient.Services;
 
@@ -49,10 +50,12 @@ public class CloudCordService(
         Memory<byte> buffer = new byte[_chunkSize];
         int bytesRead;
         ReadChunkDto? uploadedChunk = null;
+        long startByte = 0;
 
         while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0) {
             var chunk = buffer[..bytesRead];
-            uploadedChunk = await UploadChunk(chunk, downloadFileName, uploadedChunk?.FileId, ct);
+            startByte += bytesRead;
+            uploadedChunk = await UploadChunk(chunk, downloadFileName, uploadedChunk?.FileId, startByte, ct);
             if (uploadedChunk is null) throw new UploadChunkException("Failed to upload chunk");
             await onChunkUploaded(uploadedChunk.FileId, uploadedChunk.EndByte);
             
@@ -88,9 +91,10 @@ public class CloudCordService(
         response.EnsureSuccessStatusCode();
     }
 
-    private async Task<ReadChunkDto?> UploadChunk(Memory<byte> chunk, string downloadFileName, string? fileId, CancellationToken ct) {
+    private async Task<ReadChunkDto?> UploadChunk(ReadOnlyMemory<byte> chunk, string downloadFileName, string? fileId, long startByte, CancellationToken ct) {
         var content = new MultipartFormDataContent();
-        content.Add(new ByteArrayContent(chunk.ToArray()), "file", downloadFileName);
+        content.Add(new ReadOnlyMemoryContent(chunk), "file", downloadFileName);
+        content.Add(new StringContent(startByte.ToString(CultureInfo.InvariantCulture)), "startByte");
         if (fileId is not null) content.Add(new StringContent(fileId), "fileId");
 
         var response = await _backend.PostAsync("api/files/chunked", content, ct);

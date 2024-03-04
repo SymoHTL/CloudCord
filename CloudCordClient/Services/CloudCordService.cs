@@ -35,6 +35,7 @@ public class CloudCordService(
         return await response.Content.ReadAsStringAsync(ct);
     }
 
+
     /// <summary>
     /// Uploads a file to the cloudcord backend in chunks <br/>
     /// Does not close the stream <br/>
@@ -58,16 +59,44 @@ public class CloudCordService(
             uploadedChunk = await UploadChunk(chunk, downloadFileName, uploadedChunk?.FileId, startByte, ct);
             if (uploadedChunk is null) throw new UploadChunkException("Failed to upload chunk");
             await onChunkUploaded(uploadedChunk.FileId, uploadedChunk.EndByte);
-            
+
             if (bytesRead < _chunkSize) break;
         }
 
         if (uploadedChunk is null)
             throw new UploadChunkException("File had 0 bytes - maybe- idk");
-        
+
         return uploadedChunk.FileId;
     }
-    
+
+    private async Task<ReadChunkDto?> UploadChunk(ReadOnlyMemory<byte> chunk, string downloadFileName, string? fileId,
+        long startByte, CancellationToken ct) {
+        var content = new MultipartFormDataContent();
+        content.Add(new ReadOnlyMemoryContent(chunk), "chunkFile", downloadFileName);
+        content.Add(new StringContent(startByte.ToString(CultureInfo.InvariantCulture)), "startByte");
+        if (fileId is not null) content.Add(new StringContent(fileId), "fileId");
+
+        var response = await _backend.PostAsync("api/files/chunked", content, ct);
+        Console.WriteLine(await response.Content.ReadAsStringAsync(ct));
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<ReadChunkDto>(ct);
+    }
+
+    private async Task<ReadChunkDto?> UploadChunk(Stream chunk, string downloadFileName, string? fileId, long startByte,
+        CancellationToken ct) {
+        var content = new MultipartFormDataContent();
+        content.Add(new StreamContent(chunk), "chunkFile", downloadFileName);
+        content.Add(new StringContent(startByte.ToString(CultureInfo.InvariantCulture)), "startByte");
+        if (fileId is not null) content.Add(new StringContent(fileId), "fileId");
+
+        var response = await _backend.PostAsync("api/files/chunked", content, ct);
+        Console.WriteLine(await response.Content.ReadAsStringAsync(ct));
+        response.EnsureSuccessStatusCode();
+
+        return await response.Content.ReadFromJsonAsync<ReadChunkDto>(ct);
+    }
+
     /// <summary>
     ///  Downloads a file from the cloudcord backend
     /// Produces exceptions if the request fails
@@ -78,7 +107,7 @@ public class CloudCordService(
     public async Task<Stream> Download(string fileId, CancellationToken ct) {
         return await _backend.GetStreamAsync($"api/files/{fileId}", ct);
     }
-    
+
     /// <summary>
     /// Deletes a file from the cloudcord backend
     /// Produces exceptions if the request fails
@@ -89,18 +118,5 @@ public class CloudCordService(
     public async Task Delete(string fileId, CancellationToken ct) {
         var response = await _backend.DeleteAsync($"api/files/{fileId}", ct);
         response.EnsureSuccessStatusCode();
-    }
-
-    private async Task<ReadChunkDto?> UploadChunk(ReadOnlyMemory<byte> chunk, string downloadFileName, string? fileId, long startByte, CancellationToken ct) {
-        var content = new MultipartFormDataContent();
-        content.Add(new ReadOnlyMemoryContent(chunk), "chunkFile", downloadFileName);
-        content.Add(new StringContent(startByte.ToString(CultureInfo.InvariantCulture)), "startByte");
-        if (fileId is not null) content.Add(new StringContent(fileId), "fileId");
-
-        var response = await _backend.PostAsync("api/files/chunked", content, ct);
-        Console.WriteLine(await response.Content.ReadAsStringAsync(ct));
-        response.EnsureSuccessStatusCode();
-        
-        return await response.Content.ReadFromJsonAsync<ReadChunkDto>(ct);
     }
 }

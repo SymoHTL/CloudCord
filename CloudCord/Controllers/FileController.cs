@@ -1,4 +1,6 @@
-﻿namespace CloudCord.Controllers;
+﻿using System.Security.Cryptography;
+
+namespace CloudCord.Controllers;
 
 [ApiController]
 [Route("api/files")]
@@ -14,12 +16,11 @@ public class FileController(
     private const long MaxFileSize = 10L * 1024 * 1024 * 1024; // 10GB
 
     private readonly HttpClient _httpClient = factory.CreateClient("default");
-    private readonly Random _random = new();
 
     private string RandomFileName(int length = 64) {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         return new string(Enumerable.Repeat(chars, length)
-            .Select(s => s[_random.Next(s.Length)]).ToArray());
+            .Select(s => s[RandomNumberGenerator.GetInt32(s.Length - 1)]).ToArray());
     }
 
 

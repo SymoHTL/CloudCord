@@ -32,9 +32,9 @@ public class FileController(
             return;
         }
 
-        var msg = await dcMsgService.GetMessageAsync(files.First().MessageId);
+        var msg = await dcMsgService.GetMessageAsync(files.First().MessageId, ct);
         Response.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") {
-            FileName = msg.Attachments.First().Filename
+            FileName = msg.FileName
         }.ToString();
 
         var rangeHeader = Request.Headers.Range;
@@ -79,16 +79,10 @@ public class FileController(
     [HttpDelete("{fileId}")]
     public async Task<IActionResult> Delete(string fileId, CancellationToken ct) {
         var files = await repository.ReadAsync(f => f.FileId == fileId, f => f.StartByte, ct);
-        var channel = await dcMsgService.GetChannelAsync(cfg.Value.GuildId, cfg.Value.ChannelId);
-        if (channel is null) return NotFound("Channel not found");
+        
+        logger.LogInformation("Deleting {FileId} from discord", fileId);
 
-        logger.LogInformation("Deleting {FileId} from discord - {ChannelId}", fileId, channel.Id);
-
-        foreach (var file in files) {
-            var msg = await channel.GetMessageAsync(file.MessageId);
-            if (msg is null) continue;
-            await msg.DeleteAsync();
-        }
+        await dcMsgService.DeleteMessagesAsync(files.Select(f => f.MessageId), ct);
 
         await repository.DeleteAsync(files, ct);
         return Ok();
@@ -101,7 +95,7 @@ public class FileController(
 
     private async Task<bool> Upload(Stream stream, string fileId, string downloadFileName, CancellationToken ct,
         long startByte = 0) {
-        var channel = await dcMsgService.GetChannelAsync(cfg.Value.GuildId, cfg.Value.ChannelId);
+        var channel = await dcMsgService.GetChannelAsync(cfg.Value.GuildId, cfg.Value.ChannelId, ct);
         if (channel is null) return false;
         logger.LogInformation("Uploading file {FileId} to discord - {ChannelId}", fileId, channel.Id);
 
@@ -144,10 +138,9 @@ public class FileController(
 
     private async Task StreamFilesInto(Stream output, List<FileEntry> files,
         CancellationToken ct) {
-        var ids = files.Select(f => f.MessageId).ToArray();
-
-        await foreach (var msg in dcMsgService.GetMessagesAsync(ids).WithCancellation(ct)) {
-            var dataStream = await _httpClient.GetStreamAsync(msg.Attachments.First().Url, ct);
+        foreach (var entry in files) {
+            var msg = await dcMsgService.GetMessageAsync(entry.MessageId, ct);
+            var dataStream = await _httpClient.GetStreamAsync(msg.Url, ct);
             await dataStream.CopyToAsync(output, ct);
             await dataStream.DisposeAsync(); // Manually dispose to immediately release resources
         }
@@ -175,11 +168,9 @@ public class FileController(
         Response.Headers.Append("Content-Length", contentLength.ToString());
         Response.ContentType = "application/octet-stream";
 
-        var ids = files.Select(f => f.MessageId).ToArray();
-
-        await foreach (var msg in dcMsgService.GetMessagesAsync(ids).WithCancellation(ct)) {
-            var entry = files.First(f => f.MessageId == msg.Id);
-            var dataStream = await _httpClient.GetStreamAsync(msg.Attachments.First().Url, ct);
+        foreach (var entry in files) {
+            var msg = await dcMsgService.GetMessageAsync(entry.MessageId, ct);
+            var dataStream = await _httpClient.GetStreamAsync(msg.Url, ct);
 
             var offset = Math.Max(start - entry.StartByte, 0);
             var length = start == 0 && end == files.Last().EndByte

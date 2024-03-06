@@ -60,7 +60,7 @@ public class Tests {
 
     [Test]
     public async Task Download() {
-        const string fileId = "O3hsieMurFVHpAOkHhBIVRxExWe8BuC5ZIMSpf3ktaqI2V5TqV7DIt6o9R2eP6eD";
+        const string fileId = "7ixdF7WlgkSvUaAzgeNkgjPUjGZwMNCZwDxjSYh24666jHgDoS6h1pWrENgWbEdW";
         var start = DateTime.Now;
         var stream = await _cordService.Download(fileId, CancellationToken.None);
         var reader = new StreamReader(stream);
@@ -73,7 +73,7 @@ public class Tests {
 
     [Test]
     public async Task Delete() {
-        const string fileId = "O3hsieMurFVHpAOkHhBIVRxExWe8BuC5ZIMSpf3ktaqI2V5TqV7DIt6o9R2eP6eD";
+        const string fileId = "7ixdF7WlgkSvUaAzgeNkgjPUjGZwMNCZwDxjSYh24666jHgDoS6h1pWrENgWbEdW";
         await _cordService.Delete(fileId, CancellationToken.None);
     }
 }

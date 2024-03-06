@@ -1,15 +1,22 @@
-﻿using System.Reflection;
+﻿using System.Diagnostics;
+using System.Reflection;
 using Discord;
 using Discord.Interactions;
+using Microsoft.Extensions.Caching.Memory;
 
 namespace CloudCord.Services;
 
-public class DcMsgService(ILogger<DcMsgService> logger, IOptions<DiscordCfg> dcCfg, IServiceProvider sP) {
+public class DcMsgService(
+    ILogger<DcMsgService> logger,
+    IOptions<DiscordCfg> dcCfg,
+    IServiceProvider sP) {
     private DiscordSocketClient[] Clients { get; set; } = [];
     private SemaphoreSlim Semaphore { get; } = new(1, 1);
 
-    public async Task<SocketTextChannel?> GetChannelAsync(ulong guildId, ulong channelId) {
-        await Semaphore.WaitAsync();
+    private IMemoryCache Cache { get; } = new MemoryCache(new MemoryCacheOptions());
+
+    public async Task<SocketTextChannel?> GetChannelAsync(ulong guildId, ulong channelId, CancellationToken ct) {
+        await Semaphore.WaitAsync(ct);
         try {
             var client = Clients[Random.Shared.Next(Clients.Length)];
             var guild = client.GetGuild(guildId);
@@ -27,54 +34,26 @@ public class DcMsgService(ILogger<DcMsgService> logger, IOptions<DiscordCfg> dcC
         }
     }
 
-    public async Task<IMessage> GetMessageAsync(ulong id) {
-        SocketTextChannel? channel;
-        await Semaphore.WaitAsync();
-        try {
-            var client = Clients[Random.Shared.Next(Clients.Length)];
-            var guild = client.GetGuild(dcCfg.Value.GuildId);
-            channel = guild?.GetTextChannel(dcCfg.Value.ChannelId);
-        }
-        finally {
-            Semaphore.Release();
+    public async Task<AttachmentMessage> GetMessageAsync(ulong id, CancellationToken ct) {
+        var channel = await GetChannelAsync(dcCfg.Value.GuildId, dcCfg.Value.ChannelId, ct);
+
+        if (channel is null) {
+            logger.LogError("Channel {Channel} not found in guild {Guild}", dcCfg.Value.ChannelId, dcCfg.Value.GuildId);
+            throw new InvalidOperationException("Channel not found");
         }
 
-        if (channel != null) return await channel.GetMessageAsync(id);
 
-        logger.LogError("Channel {Channel} not found in guild {Guild}", dcCfg.Value.ChannelId, dcCfg.Value.GuildId);
-        throw new InvalidOperationException("Channel not found");
+        if (Cache.TryGetValue<AttachmentMessage>(id, out var msg) && msg is not null) return msg;
+            
+        var dcMsg = await channel.GetMessageAsync(id, new RequestOptions(){CancelToken = ct});
+        msg = new AttachmentMessage(dcMsg);
+        Cache.Set(id, msg, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(5) });
+        return msg;
     }
 
-
-    public async IAsyncEnumerable<IMessage> GetMessagesAsync(IEnumerable<ulong> ids) {
-        var idsArray = ids.ToArray();
-        var tasks = new List<Task<IMessage>>();
-        var localClients = new List<DiscordSocketClient>();
-
-        await Semaphore.WaitAsync();
-        try {
-            localClients.AddRange(Clients);
-        }
-        finally {
-            Semaphore.Release();
-        }
-
-        for (var i = 0; i < idsArray.Length; i++) {
-            var client = localClients[i % localClients.Count];
-            var guild = client.GetGuild(dcCfg.Value.GuildId);
-            var channel = guild?.GetTextChannel(dcCfg.Value.ChannelId);
-
-            if (channel != null) {
-                tasks.Add(channel.GetMessageAsync(idsArray[i]));
-            }
-            else {
-                logger.LogError("Channel {Channel} not found in guild {Guild}", dcCfg.Value.ChannelId,
-                    dcCfg.Value.GuildId);
-                throw new InvalidOperationException("Channel not found");
-            }
-        }
-
-        foreach (var task in tasks) yield return await task;
+    public async Task DeleteMessagesAsync(IEnumerable<ulong> select, CancellationToken ct) {
+        var channel = await GetChannelAsync(dcCfg.Value.GuildId, dcCfg.Value.ChannelId, ct);
+        if (channel is not null) await channel.DeleteMessagesAsync(select, new RequestOptions { CancelToken = ct});
     }
 
     public async Task InitAsync(IEnumerable<string> tokens) {

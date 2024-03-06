@@ -41,10 +41,9 @@ Please replace the placeholders with your actual data.
 Setup discord bot:
 https://discordpy.readthedocs.io/en/stable/discord.html
 
-You need to enable all privileges, (i will find out which exact ones the bot needs but not now 😎)
+You need to enable the Message Content Intent
 
-![image](https://github.com/SymoHTL/CloudCord/assets/54981573/40e32d7a-a73b-4f53-9ae0-b839dea67d5a)
-
+![image](https://github.com/SymoHTL/CloudCord/assets/54981573/3727680b-df95-4473-b1c0-e3211bee9f42)
 
 ### Build and Run the Project
 

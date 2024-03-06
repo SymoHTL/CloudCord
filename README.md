@@ -5,7 +5,7 @@ CloudCord is a project that provides a set of APIs for managing files. It allows
 ### Speeds
 
 Up: ~ 4,5 MB/s
-Down: ~ 7,5 MB/s
+Down: ~ 15 MB/s
 
 ## Setup Instructions
 

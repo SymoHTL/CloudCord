@@ -26,4 +26,10 @@
         <ProjectReference Include="..\CloudCordClient\CloudCordClient.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <None Update="sample.mp4">
+        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      </None>
+    </ItemGroup>
+
 </Project>

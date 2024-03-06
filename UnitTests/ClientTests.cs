@@ -19,7 +19,7 @@ public class Tests {
         var logger = loggerFactory.CreateLogger<CloudCordService>();
 
         var options = new CloudCordClientSettings {
-            ChunkSize = 20 * 1024 * 1024
+            ChunkSize = 5 * 1024 * 1024
         };
 
         _cordService = new CloudCordService(httpFactory, logger, Options.Create(options));
@@ -37,6 +37,17 @@ public class Tests {
         var stream = CreateFile();
         var start = DateTime.Now;
         var fileId = await _cordService.Upload(stream, "hello.txt", CancellationToken.None);
+        Assert.That(fileId, Is.Not.Null);
+        Console.WriteLine(fileId);
+        var mbps = FileLength / (DateTime.Now - start).TotalSeconds / 1024 / 1024;
+        Console.WriteLine($"Speed: {mbps} MB/s");
+    }
+    
+    [Test]
+    public async Task UploadSampleVideo() {
+        var stream = File.OpenRead("sample.mp4");
+        var start = DateTime.Now;
+        var fileId = await _cordService.Upload(stream, "sample.mp4", CancellationToken.None);
         Assert.That(fileId, Is.Not.Null);
         Console.WriteLine(fileId);
         var mbps = FileLength / (DateTime.Now - start).TotalSeconds / 1024 / 1024;
@@ -60,7 +71,7 @@ public class Tests {
 
     [Test]
     public async Task Download() {
-        const string fileId = "7ixdF7WlgkSvUaAzgeNkgjPUjGZwMNCZwDxjSYh24666jHgDoS6h1pWrENgWbEdW";
+        const string fileId = "FzaEPWFYHr3Jvc4vSNLGjmKgbWul7fftjjG287IjxTOdRuONJnOkJIGs8fTdmBDI";
         var start = DateTime.Now;
         var stream = await _cordService.Download(fileId, CancellationToken.None);
         var reader = new StreamReader(stream);
@@ -73,7 +84,7 @@ public class Tests {
 
     [Test]
     public async Task Delete() {
-        const string fileId = "7ixdF7WlgkSvUaAzgeNkgjPUjGZwMNCZwDxjSYh24666jHgDoS6h1pWrENgWbEdW";
+        const string fileId = "FzaEPWFYHr3Jvc4vSNLGjmKgbWul7fftjjG287IjxTOdRuONJnOkJIGs8fTdmBDI";
         await _cordService.Delete(fileId, CancellationToken.None);
     }
 }

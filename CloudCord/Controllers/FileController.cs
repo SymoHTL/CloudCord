@@ -79,7 +79,7 @@ public class FileController(
     [HttpDelete("{fileId}")]
     public async Task<IActionResult> Delete(string fileId, CancellationToken ct) {
         var files = await repository.ReadAsync(f => f.FileId == fileId, f => f.StartByte, ct);
-        
+
         logger.LogInformation("Deleting {FileId} from discord", fileId);
 
         await dcMsgService.DeleteMessagesAsync(files.Select(f => f.MessageId), ct);

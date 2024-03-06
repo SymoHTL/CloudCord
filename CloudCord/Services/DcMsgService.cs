@@ -62,7 +62,7 @@ public class DcMsgService(
         Clients = new DiscordSocketClient[enumerable.Length];
         for (var i = 0; i < enumerable.Length; i++) {
             var token = enumerable[i];
-            var client = new DiscordSocketClient(new DiscordSocketConfig { GatewayIntents = GatewayIntents.All });
+            var client = new DiscordSocketClient(new DiscordSocketConfig { GatewayIntents = GatewayIntents.Guilds | GatewayIntents.MessageContent });
             var interactionService = new InteractionService(client.Rest);
             client.Log += msg => {
                 logger.Log(GetLogLevel(msg.Severity), msg.Exception, "Source: {Source}, Message: {Message}", msg.Source,

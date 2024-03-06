@@ -1,15 +1,8 @@
-using System.Text;
-using CloudCordClient.Entities;
-using CloudCordClient.Services;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-
 namespace UnitTests;
 
 public class Tests {
-    private CloudCordService _cordService = null!;
-
     private const long FileLength = 100 * 1024 * 1024; // 100MB
+    private CloudCordService _cordService = null!;
 
     [SetUp]
     public void Setup() {
@@ -42,7 +35,7 @@ public class Tests {
         var mbps = FileLength / (DateTime.Now - start).TotalSeconds / 1024 / 1024;
         Console.WriteLine($"Speed: {mbps} MB/s");
     }
-    
+
     [Test]
     public async Task UploadSampleVideo() {
         var stream = File.OpenRead("sample.mp4");

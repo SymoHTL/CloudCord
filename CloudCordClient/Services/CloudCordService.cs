@@ -1,7 +1,4 @@
-﻿using System.Globalization;
-using CloudCordClient.Exceptions;
-
-namespace CloudCordClient.Services;
+﻿namespace CloudCordClient.Services;
 
 public class CloudCordService(
     IHttpClientFactory factory,
@@ -12,9 +9,9 @@ public class CloudCordService(
     private readonly long _chunkSize = settings.Value.ChunkSize;
 
     /// <summary>
-    /// Uploads a file to the cloudcord backend <br/>
-    /// Does not close the stream <br/>
-    /// Produces exceptions if the request fails
+    ///     Uploads a file to the cloudcord backend <br />
+    ///     Does not close the stream <br />
+    ///     Produces exceptions if the request fails
     /// </summary>
     /// <param name="stream">Stream to upload</param>
     /// <param name="downloadFileName">Name of the file to upload</param>
@@ -37,9 +34,9 @@ public class CloudCordService(
 
 
     /// <summary>
-    /// Uploads a file to the cloudcord backend in chunks <br/>
-    /// Does not close the stream <br/>
-    /// Produces exceptions if the request fails
+    ///     Uploads a file to the cloudcord backend in chunks <br />
+    ///     Does not close the stream <br />
+    ///     Produces exceptions if the request fails
     /// </summary>
     /// <param name="stream">Stream to upload</param>
     /// <param name="downloadFileName">Name of the file to upload</param>
@@ -98,8 +95,8 @@ public class CloudCordService(
     }
 
     /// <summary>
-    ///  Downloads a file from the cloudcord backend
-    /// Produces exceptions if the request fails
+    ///     Downloads a file from the cloudcord backend
+    ///     Produces exceptions if the request fails
     /// </summary>
     /// <param name="fileId"> FileId of the file to download</param>
     /// <param name="ct">Cancellation token</param>
@@ -109,8 +106,8 @@ public class CloudCordService(
     }
 
     /// <summary>
-    /// Deletes a file from the cloudcord backend
-    /// Produces exceptions if the request fails
+    ///     Deletes a file from the cloudcord backend
+    ///     Produces exceptions if the request fails
     /// </summary>
     /// <param name="fileId"> FileId of the file to delete</param>
     /// <param name="ct">Cancellation token</param>

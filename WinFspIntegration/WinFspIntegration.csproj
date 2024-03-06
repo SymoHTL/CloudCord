@@ -8,7 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="winfsp.net" Version="2.0.23075" />
+        <PackageReference Include="winfsp.net" Version="2.0.23075"/>
     </ItemGroup>
 
 </Project>

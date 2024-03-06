@@ -1,10 +1,4 @@
-﻿using System.Diagnostics;
-using System.Reflection;
-using Discord;
-using Discord.Interactions;
-using Microsoft.Extensions.Caching.Memory;
-
-namespace CloudCord.Services;
+﻿namespace CloudCord.Services;
 
 public class DcMsgService(
     ILogger<DcMsgService> logger,
@@ -44,8 +38,8 @@ public class DcMsgService(
 
 
         if (Cache.TryGetValue<AttachmentMessage>(id, out var msg) && msg is not null) return msg;
-            
-        var dcMsg = await channel.GetMessageAsync(id, new RequestOptions(){CancelToken = ct});
+
+        var dcMsg = await channel.GetMessageAsync(id, new RequestOptions { CancelToken = ct });
         msg = new AttachmentMessage(dcMsg);
         Cache.Set(id, msg, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(5) });
         return msg;
@@ -53,7 +47,7 @@ public class DcMsgService(
 
     public async Task DeleteMessagesAsync(IEnumerable<ulong> select, CancellationToken ct) {
         var channel = await GetChannelAsync(dcCfg.Value.GuildId, dcCfg.Value.ChannelId, ct);
-        if (channel is not null) await channel.DeleteMessagesAsync(select, new RequestOptions { CancelToken = ct});
+        if (channel is not null) await channel.DeleteMessagesAsync(select, new RequestOptions { CancelToken = ct });
     }
 
     public async Task InitAsync(IEnumerable<string> tokens) {
@@ -62,7 +56,8 @@ public class DcMsgService(
         Clients = new DiscordSocketClient[enumerable.Length];
         for (var i = 0; i < enumerable.Length; i++) {
             var token = enumerable[i];
-            var client = new DiscordSocketClient(new DiscordSocketConfig { GatewayIntents = GatewayIntents.Guilds | GatewayIntents.MessageContent });
+            var client = new DiscordSocketClient(new DiscordSocketConfig
+                { GatewayIntents = GatewayIntents.Guilds | GatewayIntents.MessageContent });
             var interactionService = new InteractionService(client.Rest);
             client.Log += msg => {
                 logger.Log(GetLogLevel(msg.Severity), msg.Exception, "Source: {Source}, Message: {Message}", msg.Source,

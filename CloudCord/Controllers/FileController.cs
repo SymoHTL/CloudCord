@@ -1,6 +1,4 @@
-﻿using System.Security.Cryptography;
-
-namespace CloudCord.Controllers;
+﻿namespace CloudCord.Controllers;
 
 [ApiController]
 [Route("api/files")]
@@ -60,7 +58,9 @@ public class FileController(
     [HttpPost("chunked")]
     public async Task<ActionResult<ReadChunkDto>> UploadChunk([Required] IFormFile chunkFile, [FromForm] string? fileId,
         [Required] [FromForm] long startByte, CancellationToken ct) {
-        if (fileId is null) fileId = RandomFileName();
+        if (fileId is null) {
+            fileId = RandomFileName();
+        }
         else {
             var files = await repository.ReadAsync(f => f.FileId == fileId, ct);
             if (files.Count == 0) return BadRequest("File does not exist");

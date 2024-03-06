@@ -1,5 +1,3 @@
-using System.Collections.Concurrent;
-
 namespace UnitTests;
 
 public class ClientFactory : IHttpClientFactory {

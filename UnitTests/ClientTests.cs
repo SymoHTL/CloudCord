@@ -43,7 +43,7 @@ public class Tests {
         var fileId = await _cordService.Upload(stream, "sample.mp4", CancellationToken.None);
         Assert.That(fileId, Is.Not.Null);
         Console.WriteLine(fileId);
-        var mbps = FileLength / (DateTime.Now - start).TotalSeconds / 1024 / 1024;
+        var mbps = stream.Length / (DateTime.Now - start).TotalSeconds / 1024 / 1024;
         Console.WriteLine($"Speed: {mbps} MB/s");
     }
 
@@ -64,7 +64,7 @@ public class Tests {
 
     [Test]
     public async Task Download() {
-        const string fileId = "FzaEPWFYHr3Jvc4vSNLGjmKgbWul7fftjjG287IjxTOdRuONJnOkJIGs8fTdmBDI";
+        const string fileId = "H1Hky0eOzksIaqEhk6hBjgbWJMoIjXasbdP8TiBQG5HrcgDVgVaecdAkWh1dehrv";
         var start = DateTime.Now;
         var stream = await _cordService.Download(fileId, CancellationToken.None);
         var reader = new StreamReader(stream);
@@ -76,8 +76,72 @@ public class Tests {
     }
 
     [Test]
+    public async Task DownloadRanged() {
+        const string fileId = "H1Hky0eOzksIaqEhk6hBjgbWJMoIjXasbdP8TiBQG5HrcgDVgVaecdAkWh1dehrv";
+        var start = DateTime.Now;
+        var stream = await _cordService.Download(fileId, 11, 110, CancellationToken.None);
+
+        ulong byteAmount = 0;
+        while (stream.ReadByte() != -1) byteAmount++;
+
+        Assert.That(byteAmount, Is.EqualTo(100));
+    }
+
+    [Test]
+    [TestCase(1)]
+    [TestCase(10)]
+    [TestCase(50)]
+    [TestCase(100)]
+    public async Task BenchmarkDownload(int amount) {
+        const string fileId = "H1Hky0eOzksIaqEhk6hBjgbWJMoIjXasbdP8TiBQG5HrcgDVgVaecdAkWh1dehrv";
+        var tasks = new List<Task<ulong>>();
+        var start = DateTime.Now;
+        for (var i = 0; i < amount; i++) tasks.Add(Download(fileId));
+        var results = await Task.WhenAll(tasks);
+        var sum = results.Aggregate<ulong, ulong>(0, (current, r) => current + r);
+        Console.WriteLine("Total mb: " + sum / 1024 / 1024);
+        Console.WriteLine("Total time: " + (DateTime.Now - start).TotalSeconds);
+    }
+
+    [Test]
+    [TestCase(1)]
+    [TestCase(10)]
+    [TestCase(50)]
+    [TestCase(100)]
+    public async Task BenchmarkRangedDownload(int amount) {
+        const string fileId = "H1Hky0eOzksIaqEhk6hBjgbWJMoIjXasbdP8TiBQG5HrcgDVgVaecdAkWh1dehrv";
+        var tasks = new List<Task<ulong>>();
+        var start = DateTime.Now;
+        for (var i = 0; i < amount; i++) tasks.Add(DownloadRanged(fileId));
+        var results = await Task.WhenAll(tasks);
+        var sum = results.Aggregate<ulong, ulong>(0, (current, r) => current + r);
+        Console.WriteLine("Total mb: " + sum / 1024 / 1024);
+        Console.WriteLine("Total time: " + (DateTime.Now - start).TotalSeconds);
+    }
+
+    private async Task<ulong> Download(string fileId) {
+        var start = DateTime.Now;
+        var data = await _cordService.Download(fileId, CancellationToken.None);
+        ulong byteAmount = 0;
+        while (data.ReadByte() != -1) byteAmount++;
+        Console.WriteLine("completed - " + (DateTime.Now - start).TotalSeconds);
+        return byteAmount;
+    }
+
+    private const ulong BenchmarkFileSize = 17839845;
+
+    private async Task<ulong> DownloadRanged(string fileId) {
+        var start = DateTime.Now;
+        var data = await _cordService.Download(fileId, 0, BenchmarkFileSize / 2, CancellationToken.None);
+        ulong byteAmount = 0;
+        while (data.ReadByte() != -1) byteAmount++;
+        Console.WriteLine("completed - " + (DateTime.Now - start).TotalSeconds);
+        return byteAmount;
+    }
+
+    [Test]
     public async Task Delete() {
-        const string fileId = "FzaEPWFYHr3Jvc4vSNLGjmKgbWul7fftjjG287IjxTOdRuONJnOkJIGs8fTdmBDI";
+        const string fileId = "H1Hky0eOzksIaqEhk6hBjgbWJMoIjXasbdP8TiBQG5HrcgDVgVaecdAkWh1dehrv";
         await _cordService.Delete(fileId, CancellationToken.None);
     }
 }

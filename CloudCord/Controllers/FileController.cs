@@ -127,12 +127,16 @@ public class FileController(
 
     private static (long start, long end) ParseRangeHeader(string rangeHeader, long totalLength) {
         var range = RangeHeaderValue.Parse(rangeHeader);
-        var firstRange = range.Ranges.First();
+        var r = range.Ranges.First();
 
-        var start = firstRange.From ?? 0;
-        var end = firstRange.To ?? totalLength - 1;
+        Console.WriteLine($"Range: {r.From}-{r.To}");
+
+        var start = r.From ?? 0;
+        var end = r.To ?? totalLength - 1;
 
         if (end >= totalLength) end = totalLength - 1;
+
+        Console.WriteLine($"Range: {start}-{end}");
         return (start, end);
     }
 
@@ -164,39 +168,28 @@ public class FileController(
 
         Response.StatusCode = 206; // Partial content
         var contentLength = end - start + 1;
-        Response.Headers.Append("Content-Range", $"bytes {start}-{end}/{files.Last().EndByte + 1}");
+        Response.Headers.Append("Content-Range", $"bytes {start}-{end}/{files.Last().EndByte}");
         Response.Headers.Append("Content-Length", contentLength.ToString());
         Response.ContentType = "application/octet-stream";
 
         foreach (var entry in files) {
             var msg = await dcMsgService.GetMessageAsync(entry.MessageId, ct);
-            var dataStream = await _httpClient.GetStreamAsync(msg.Url, ct);
 
-            var offset = Math.Max(start - entry.StartByte, 0);
-            var length = start == 0 && end == files.Last().EndByte
-                ? entry.EndByte - entry.StartByte
-                : Math.Min(end - entry.StartByte, entry.EndByte - entry.StartByte) + 1;
-
-            var buffer = new byte[MaxDcChunkSize];
-            if (dataStream is not MemoryStream) {
-                var ms = new MemoryStream();
-                await dataStream.CopyToAsync(ms, ct);
-                await dataStream.DisposeAsync(); // Manually dispose to immediately release resources
-                dataStream = ms;
-            }
-
-            dataStream.Position = offset;
-            int bytesRead;
-            while (length > 0 &&
-                   (bytesRead =
-                       await dataStream.ReadAsync(buffer.AsMemory(0, (int)Math.Min(buffer.Length, length)), ct)) >
-                   0) {
-                await Response.Body.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
-                length -= bytesRead;
-            }
-
-            await dataStream.DisposeAsync(); // Manually dispose to immediately release resources
+            var startByte = Math.Max(entry.StartByte, start);
+            var endByte = Math.Min(entry.EndByte, end);
+            
+            await ProcessRangeRequest(startByte, endByte, msg.Url, Response.Body, ct);
         }
+    }
+
+    private async Task ProcessRangeRequest(long startByte, long endByte, string url, Stream output,
+        CancellationToken ct) {
+        var msg = new HttpRequestMessage(HttpMethod.Get, url);
+        msg.Headers.Range = new RangeHeaderValue(startByte, endByte);
+        var response = await _httpClient.SendAsync(msg, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        await response.Content.CopyToAsync(output, ct);
+        response.Dispose();
     }
 
     private async Task RespondNotFound(string message, CancellationToken ct) {

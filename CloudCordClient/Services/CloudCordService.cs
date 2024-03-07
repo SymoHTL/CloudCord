@@ -1,4 +1,6 @@
-﻿namespace CloudCordClient.Services;
+﻿using System.Net.Http.Headers;
+
+namespace CloudCordClient.Services;
 
 public class CloudCordService(
     IHttpClientFactory factory,
@@ -103,6 +105,14 @@ public class CloudCordService(
     /// <returns>Stream of the file</returns>
     public async Task<Stream> Download(string fileId, CancellationToken ct) {
         return await _backend.GetStreamAsync($"api/files/{fileId}", ct);
+    }
+
+    public async Task<Stream> Download(string fileId, ulong start, ulong end, CancellationToken ct) {
+        var request = new HttpRequestMessage(HttpMethod.Get, $"api/files/{fileId}");
+        request.Headers.Range = new RangeHeaderValue((long)start, (long)end);
+        var response = await _backend.SendAsync(request, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsStreamAsync(ct);
     }
 
     /// <summary>

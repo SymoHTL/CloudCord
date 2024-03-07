@@ -20,7 +20,6 @@ public class DcMsgService(
                 return null;
             }
 
-            logger.LogInformation("Getting channel {Channel} from guild {Guild}", channelId, guildId);
             return channel;
         }
         finally {
@@ -36,9 +35,10 @@ public class DcMsgService(
             throw new InvalidOperationException("Channel not found");
         }
 
-
         if (Cache.TryGetValue<AttachmentMessage>(id, out var msg) && msg is not null) return msg;
 
+        // only report if the message is not in the cache
+        logger.LogInformation("Getting message {Id} from channel {Channel}", id, dcCfg.Value.ChannelId);
         var dcMsg = await channel.GetMessageAsync(id, new RequestOptions { CancelToken = ct });
         msg = new AttachmentMessage(dcMsg);
         Cache.Set(id, msg, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(5) });

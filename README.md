@@ -2,7 +2,7 @@
 
 CloudCord is a project that provides a set of APIs for managing files. It allows you to upload, download, and delete files. It also supports chunked file upload.
 
-## [Patch Notes](README.md)
+## [Patch Notes](Patchnotes.md)
 
 ## Current Problems:
 

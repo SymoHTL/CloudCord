@@ -1,6 +1,7 @@
 ## v0.2
 
 - fixed ranged requests for "split" files
+- fixed chunked uploading
 
 
 ## v0.1

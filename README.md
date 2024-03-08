@@ -6,6 +6,8 @@ CloudCord is a project that provides a set of APIs for managing files. It allows
 
 ## Current Problems:
 
+too many requests without caching get ratelimited by discord
+
 every CCU loads the file from dc (if multiple people are reading the same file they will all use the full bandwidth they provide)
 
 ### Speeds

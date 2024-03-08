@@ -54,8 +54,8 @@ public class CloudCordService(
 
         while ((bytesRead = await stream.ReadAsync(buffer, ct)) > 0) {
             var chunk = buffer[..bytesRead];
-            startByte += bytesRead;
             uploadedChunk = await UploadChunk(chunk, downloadFileName, uploadedChunk?.FileId, startByte, ct);
+            startByte += bytesRead;
             if (uploadedChunk is null) throw new UploadChunkException("Failed to upload chunk");
             await onChunkUploaded(uploadedChunk.FileId, uploadedChunk.EndByte);
 

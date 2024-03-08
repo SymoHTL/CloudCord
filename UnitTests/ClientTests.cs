@@ -48,6 +48,20 @@ public class Tests {
     }
 
     [Test]
+    public async Task UploadSampleVideoChunked() {
+        var stream = File.OpenRead("sample.mp4");
+        var start = DateTime.Now;
+        var fileId = await _cordService.UploadChunked(stream, "sample.mp4", CancellationToken.None, (id, end) => {
+            Console.WriteLine($"Uploaded chunk {id} to {end}");
+            return Task.CompletedTask;
+        });
+        Assert.That(fileId, Is.Not.Null);
+        Console.WriteLine(fileId);
+        var mbps = stream.Length / (DateTime.Now - start).TotalSeconds / 1024 / 1024;
+        Console.WriteLine($"Speed: {mbps} MB/s");
+    }
+
+    [Test]
     public async Task UploadChunked() {
         var stream = CreateFile();
         var start = DateTime.Now;
@@ -73,6 +87,12 @@ public class Tests {
         Assert.That(content, Is.EqualTo(shouldBe));
         var mbps = FileLength / (DateTime.Now - start).TotalSeconds / 1024 / 1024;
         Console.WriteLine($"Speed: {mbps} MB/s");
+    }
+
+    [Test]
+    public async Task Delete() {
+        const string fileId = "p6DeCjNAO8cBOmmDObaMDliaWawLWzLi4IObXe4kSwY5utjXoBBJLnljTiAgGCe2";
+        await _cordService.Delete(fileId, CancellationToken.None);
     }
 
     [Test]
@@ -137,11 +157,5 @@ public class Tests {
         while (data.ReadByte() != -1) byteAmount++;
         Console.WriteLine("completed - " + (DateTime.Now - start).TotalSeconds);
         return byteAmount;
-    }
-
-    [Test]
-    public async Task Delete() {
-        const string fileId = "H1Hky0eOzksIaqEhk6hBjgbWJMoIjXasbdP8TiBQG5HrcgDVgVaecdAkWh1dehrv";
-        await _cordService.Delete(fileId, CancellationToken.None);
     }
 }

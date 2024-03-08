@@ -129,14 +129,11 @@ public class FileController(
         var range = RangeHeaderValue.Parse(rangeHeader);
         var r = range.Ranges.First();
 
-        Console.WriteLine($"Range: {r.From}-{r.To}");
-
         var start = r.From ?? 0;
         var end = r.To ?? totalLength - 1;
 
         if (end >= totalLength) end = totalLength - 1;
 
-        Console.WriteLine($"Range: {start}-{end}");
         return (start, end);
     }
 
@@ -158,7 +155,8 @@ public class FileController(
 
     private async Task ProcessRangeRequest(List<FileEntry> files, StringValues rangeHeader,
         CancellationToken ct) {
-        var (start, end) = ParseRangeHeader(rangeHeader!, files.Last().EndByte);
+        var totalSize = files.Last().EndByte;
+        var (start, end) = ParseRangeHeader(rangeHeader!, totalSize);
         files = files.Where(file => file.StartByte <= end && file.EndByte >= start).ToList();
 
         if (files.Count == 0) {
@@ -173,12 +171,12 @@ public class FileController(
         Response.ContentType = "application/octet-stream";
 
         foreach (var entry in files) {
-            var msg = await dcMsgService.GetMessageAsync(entry.MessageId, ct);
-
-            var startByte = Math.Max(entry.StartByte, start);
-            var endByte = Math.Min(entry.EndByte, end);
             
-            await ProcessRangeRequest(startByte, endByte, msg.Url, Response.Body, ct);
+            var adjustedStart = Math.Max(start,  entry.StartByte) -  entry.StartByte;
+            var adjustedEnd = Math.Min(end, entry.EndByte) -  entry.StartByte;
+            
+            var msg = await dcMsgService.GetMessageAsync(entry.MessageId, ct);
+            await ProcessRangeRequest(adjustedStart, adjustedEnd, msg.Url, Response.Body, ct);
         }
     }
 

@@ -8,3 +8,5 @@
     build:
       context: .
       dockerfile: CloudCord/Dockerfile
+    volumes:
+      - /var/docker-data/cloudcord/keys:/keys

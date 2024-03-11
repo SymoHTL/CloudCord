@@ -1,0 +1,10 @@
+﻿services:
+  cloudcord:
+    image: cloudcord
+    container_name: "cloudcord"
+    restart: always
+    ports:
+      - "8080:8080"
+    build:
+      context: .
+      dockerfile: CloudCord/Dockerfile

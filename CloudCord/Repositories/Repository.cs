@@ -23,8 +23,17 @@ public class Repository<TEntity> where TEntity : class {
             .ToListAsync(ct);
     }
 
+    public async Task<TEntity?> FindAsync(object id, CancellationToken ct) {
+        return await Table.FindAsync([id], ct);
+    }
+
     public async Task CreateAsync(IEnumerable<TEntity> entities, CancellationToken ct) {
         await Table.AddRangeAsync(entities, ct);
+        await Context.SaveChangesAsync(ct);
+    }
+
+    public async Task UpdateAsync(TEntity entity, CancellationToken ct) {
+        Table.Update(entity);
         await Context.SaveChangesAsync(ct);
     }
 

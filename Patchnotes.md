@@ -1,3 +1,7 @@
+## v0.3
+- increased cache time
+
+
 ## v0.2
 
 - fixed ranged requests for "split" files

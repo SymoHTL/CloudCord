@@ -48,6 +48,8 @@ Please replace the placeholders with your actual data.
 Setup discord bot:
 https://discordpy.readthedocs.io/en/stable/discord.html
 
+#### recommended => botamount = CCU (if multiple user read different files the bot's will get ratelimited)
+
 You need to enable the Message Content Intent
 
 ![image](https://github.com/SymoHTL/CloudCord/assets/54981573/3727680b-df95-4473-b1c0-e3211bee9f42)

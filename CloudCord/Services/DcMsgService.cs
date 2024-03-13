@@ -41,7 +41,7 @@ public class DcMsgService(
         logger.LogInformation("Getting message {Id} from channel {Channel}", id, dcCfg.Value.ChannelId);
         var dcMsg = await channel.GetMessageAsync(id, new RequestOptions { CancelToken = ct });
         msg = new AttachmentMessage(dcMsg);
-        Cache.Set(id, msg, new MemoryCacheEntryOptions { SlidingExpiration = TimeSpan.FromMinutes(5) });
+        Cache.Set(id, msg, TimeSpan.FromHours(23));
         return msg;
     }
 

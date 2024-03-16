@@ -7,7 +7,7 @@ public class Tests {
     [SetUp]
     public void Setup() {
         var httpFactory = new ClientFactory();
-        httpFactory.AddClient("CloudCord", new HttpClient { BaseAddress = new Uri("http://localhost:5299") });
+        httpFactory.AddClient("CloudCord", new HttpClient { BaseAddress = new Uri("http://localhost:5000") });
         var loggerFactory = new LoggerFactory();
         var logger = loggerFactory.CreateLogger<CloudCordService>();
 

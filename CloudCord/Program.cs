@@ -93,6 +93,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-app.MapGet("/", () => Results.File("index.html","text/html"));
+app.MapGet("/", () => Results.File("/app/index.html","text/html"));
 
 app.Run();

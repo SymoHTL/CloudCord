@@ -2,8 +2,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudCord", "CloudCord\CloudCord.csproj", "{F4CD9A4B-D611-4276-BF93-F9BE02B3122F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WinFspIntegration", "WinFspIntegration\WinFspIntegration.csproj", "{47867996-D08E-4BCE-B315-1B9ACF73336F}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared.csproj", "{497462FC-57F6-4DD2-AE3B-302D0B379D2C}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CloudCordClient", "CloudCordClient\CloudCordClient.csproj", "{1F5E492A-AD93-4C24-B4A1-34F7B5784F8C}"
@@ -25,10 +23,6 @@ Global
 		{F4CD9A4B-D611-4276-BF93-F9BE02B3122F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{F4CD9A4B-D611-4276-BF93-F9BE02B3122F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{F4CD9A4B-D611-4276-BF93-F9BE02B3122F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{47867996-D08E-4BCE-B315-1B9ACF73336F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{47867996-D08E-4BCE-B315-1B9ACF73336F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{47867996-D08E-4BCE-B315-1B9ACF73336F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{47867996-D08E-4BCE-B315-1B9ACF73336F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{497462FC-57F6-4DD2-AE3B-302D0B379D2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{497462FC-57F6-4DD2-AE3B-302D0B379D2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{497462FC-57F6-4DD2-AE3B-302D0B379D2C}.Release|Any CPU.ActiveCfg = Release|Any CPU

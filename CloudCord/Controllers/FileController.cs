@@ -1,4 +1,6 @@
-﻿namespace CloudCord.Controllers;
+﻿using System.Text;
+
+namespace CloudCord.Controllers;
 
 [ApiController]
 [Route("api/files")]
@@ -36,8 +38,34 @@ public class FileController(
         }.ToString();
 
         var rangeHeader = Request.Headers.Range;
-        if (!string.IsNullOrEmpty(rangeHeader)) await ProcessRangeRequest(files, rangeHeader, ct);
-        else await ProcessFullFileRequest(files, ct);
+        if (!string.IsNullOrEmpty(rangeHeader)) await ProcessRangeRequest(files, rangeHeader, Response.Body, ct);
+        else await ProcessFullFileRequest(files, Response.Body,false, ct);
+    }
+
+    [HttpGet("{fileId}/{rawKey}")]
+    public async Task StreamSecure(string fileId, string rawKey, CancellationToken ct) {
+        var files = await repository.ReadAsync(f => f.FileId == fileId, f => f.StartByte, ct);
+        if (files.Count == 0) {
+            await RespondNotFound("File not found", ct);
+            return;
+        }
+
+        var msg = await dcMsgService.GetMessageAsync(files.First().MessageId, ct);
+        Response.Headers.ContentDisposition = new ContentDispositionHeaderValue("attachment") {
+            FileName = msg.FileName
+        }.ToString();
+
+        var transform = Aes.Create();
+        var key = SHA512.HashData(Encoding.UTF8.GetBytes(rawKey));
+        transform.Key = key.Take(32).ToArray();
+        transform.IV = key.Skip(32).Take(16).ToArray();
+
+        await using var cryptoStream =
+            new CryptoStream(Response.Body, transform.CreateDecryptor(), CryptoStreamMode.Write);
+
+        var rangeHeader = Request.Headers.Range;
+        if (!string.IsNullOrEmpty(rangeHeader)) await ProcessRangeRequest(files, rangeHeader, cryptoStream, ct);
+        else await ProcessFullFileRequest(files, cryptoStream, true, ct);
     }
 
 
@@ -48,6 +76,27 @@ public class FileController(
         var fileName = RandomFileName();
 
         var success = await Upload(file, fileName, ct);
+        if (!success) return BadRequest("Failed to upload to discord");
+
+        return Ok(fileName);
+    }
+
+    [RequestSizeLimit(MaxFileSize)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxFileSize)]
+    [HttpPost("{rawKey}")]
+    public async Task<ActionResult<string>> UploadSecure([Required] IFormFile file, [FromRoute] string rawKey,
+        CancellationToken ct) {
+        var fileName = RandomFileName();
+
+        var transform = Aes.Create();
+        var key = SHA512.HashData(Encoding.UTF8.GetBytes(rawKey));
+        transform.Key = key.Take(32).ToArray();
+        transform.IV = key.Skip(32).Take(16).ToArray();
+
+        await using var cryptoStream =
+            new CryptoStream(file.OpenReadStream(), transform.CreateEncryptor(), CryptoStreamMode.Read);
+
+        var success = await Upload(cryptoStream, fileName, file.FileName, ct);
         if (!success) return BadRequest("Failed to upload to discord");
 
         return Ok(fileName);
@@ -110,10 +159,10 @@ public class FileController(
             await ms.DisposeAsync();
             if (msg is null) return false;
             startByte = endByte;
-            endByte += msg.Attachments.Sum(a => a.Size);
+            endByte += bytesRead;
             messages.Add(new FileEntry {
                 FileId = fileId,
-                Size = msg.Attachments.Sum(a => a.Size),
+                Size = bytesRead,
                 StartByte = startByte,
                 EndByte = endByte,
                 MessageId = msg.Id
@@ -147,13 +196,13 @@ public class FileController(
         }
     }
 
-    private async Task ProcessFullFileRequest(List<FileEntry> files, CancellationToken ct) {
+    private async Task ProcessFullFileRequest(List<FileEntry> files, Stream output, bool noContentLength, CancellationToken ct) {
         Response.StatusCode = 200;
-        Response.Headers.Append("Content-Length", files.Last().EndByte.ToString());
-        await StreamFilesInto(Response.Body, files, ct);
+        if (!noContentLength) Response.Headers.Append("Content-Length", files.Last().EndByte.ToString());
+        await StreamFilesInto(output, files, ct);
     }
 
-    private async Task ProcessRangeRequest(List<FileEntry> files, StringValues rangeHeader,
+    private async Task ProcessRangeRequest(List<FileEntry> files, StringValues rangeHeader, Stream output,
         CancellationToken ct) {
         var totalSize = files.Last().EndByte;
         var (start, end) = ParseRangeHeader(rangeHeader!, totalSize);
@@ -171,12 +220,11 @@ public class FileController(
         Response.ContentType = "application/octet-stream";
 
         foreach (var entry in files) {
-            
-            var adjustedStart = Math.Max(start,  entry.StartByte) -  entry.StartByte;
-            var adjustedEnd = Math.Min(end, entry.EndByte) -  entry.StartByte;
-            
+            var adjustedStart = Math.Max(start, entry.StartByte) - entry.StartByte;
+            var adjustedEnd = Math.Min(end, entry.EndByte) - entry.StartByte;
+
             var msg = await dcMsgService.GetMessageAsync(entry.MessageId, ct);
-            await ProcessRangeRequest(adjustedStart, adjustedEnd, msg.Url, Response.Body, ct);
+            await ProcessRangeRequest(adjustedStart, adjustedEnd, msg.Url, output, ct);
         }
     }
 

@@ -30,6 +30,12 @@
         <None Update="sample.mp4">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
+        <None Update="BigBuckBunny.mp4">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Update="Gravity.Falls.S01E01.Tourist.Trapped.2160p.BluRay.AI.AV1.DTS-HD.MA.5.1-Enrav1sh.mp4">
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 
 </Project>

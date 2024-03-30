@@ -1,7 +1,9 @@
+using System.Security.Cryptography;
+
 namespace UnitTests;
 
 public class Tests {
-    private const long FileLength = 100 * 1024 * 1024; // 100MB
+    private const long FileLength = 30 * 1024 * 1024; // 100MB
     private CloudCordService _cordService = null!;
 
     [SetUp]
@@ -12,7 +14,7 @@ public class Tests {
         var logger = loggerFactory.CreateLogger<CloudCordService>();
 
         var options = new CloudCordClientSettings {
-            ChunkSize = 5 * 1024 * 1024
+            ChunkSize = 25 * 1024 * 1024
         };
 
         _cordService = new CloudCordService(httpFactory, logger, Options.Create(options));
@@ -37,6 +39,18 @@ public class Tests {
     }
 
     [Test]
+    public async Task UploadSecure() {
+        var stream = CreateFile();
+        var start = DateTime.Now;
+        var fileId =
+            await _cordService.UploadSecure(stream, "hello.txt", "superSecureKeyPlsDontCopy", CancellationToken.None);
+        Assert.That(fileId, Is.Not.Null);
+        Console.WriteLine(fileId);
+        var mbps = FileLength / (DateTime.Now - start).TotalSeconds / 1024 / 1024;
+        Console.WriteLine($"Speed: {mbps} MB/s");
+    }
+
+    [Test]
     public async Task UploadSampleVideo() {
         var stream = File.OpenRead("sample.mp4");
         var start = DateTime.Now;
@@ -49,7 +63,7 @@ public class Tests {
 
     [Test]
     public async Task UploadSampleVideoChunked() {
-        var stream = File.OpenRead("sample.mp4");
+        var stream = File.OpenRead("");
         var start = DateTime.Now;
         var fileId = await _cordService.UploadChunked(stream, "sample.mp4", CancellationToken.None, (id, end) => {
             Console.WriteLine($"Uploaded chunk {id} to {end}");
@@ -78,9 +92,61 @@ public class Tests {
 
     [Test]
     public async Task Download() {
-        const string fileId = "H1Hky0eOzksIaqEhk6hBjgbWJMoIjXasbdP8TiBQG5HrcgDVgVaecdAkWh1dehrv";
+        const string fileId = "z0vkiK4K5nykw2krQPXhViLUucNPKPIQwqnqEzpnsCg2zBqHqttu71hgfwF0pNnd";
         var start = DateTime.Now;
         var stream = await _cordService.Download(fileId, CancellationToken.None);
+        var reader = new StreamReader(stream);
+        var content = await reader.ReadToEndAsync();
+        var shouldBe = new string('a', (int)FileLength);
+        Assert.That(content, Is.EqualTo(shouldBe));
+        var mbps = FileLength / (DateTime.Now - start).TotalSeconds / 1024 / 1024;
+        Console.WriteLine($"Speed: {mbps} MB/s");
+    }
+
+    [Test]
+    public async Task DebugWrite() {
+        if (File.Exists("sample.txt")) File.Delete("sample.txt");
+        await using var fs = new FileStream("sample.txt", FileMode.Create);
+
+        var transform = Aes.Create();
+        var key = SHA512.HashData("superSecureKeyPlsDontCopy"u8.ToArray());
+        transform.Key = key.Take(32).ToArray();
+        transform.IV = key.Skip(32).Take(16).ToArray();
+
+        await using var cryptoStream = new CryptoStream(fs, transform.CreateEncryptor(), CryptoStreamMode.Write);
+
+        for (var i = 0; i < 100; i++) {
+            cryptoStream.WriteByte((byte)i);
+            Console.WriteLine(i);
+        }
+
+        cryptoStream.Flush();
+        Console.WriteLine("Done");
+    }
+
+    [Test]
+    public async Task DebugRead() {
+        var fs = new FileStream("sample.txt", FileMode.Open);
+
+
+        var transform = Aes.Create();
+        var key = SHA512.HashData("superSecureKeyPlsDontCopy"u8.ToArray());
+        transform.Key = key.Take(32).ToArray();
+        transform.IV = key.Skip(32).Take(16).ToArray();
+
+        await using var cryptoStream = new CryptoStream(fs, transform.CreateDecryptor(), CryptoStreamMode.Read);
+
+        // print the first 100 bytes
+        for (var i = 0; i < 100; i++) {
+            Console.WriteLine(cryptoStream.ReadByte());
+        }
+    }
+
+    [Test]
+    public async Task DownloadSecure() {
+        const string fileId = "z0vkiK4K5nykw2krQPXhViLUucNPKPIQwqnqEzpnsCg2zBqHqttu71hgfwF0pNnd";
+        var start = DateTime.Now;
+        var stream = await _cordService.DownloadSecure(fileId, "superSecureKeyPlsDontCopy", CancellationToken.None);
         var reader = new StreamReader(stream);
         var content = await reader.ReadToEndAsync();
         var shouldBe = new string('a', (int)FileLength);

@@ -33,6 +33,21 @@ public class CloudCordService(
 
         return await response.Content.ReadAsStringAsync(ct);
     }
+    
+    public async Task<string> UploadSecure(Stream stream, string downloadFileName, string key, CancellationToken ct) {
+        var content = new MultipartFormDataContent {
+            { new StreamContent(stream), "file", downloadFileName }
+        };
+
+        logger.LogInformation("Uploading {FileName}", downloadFileName);
+
+        var response = await _backend.PostAsync($"api/files/{key}", content, ct);
+        response.EnsureSuccessStatusCode();
+
+        logger.LogInformation("Uploaded {FileName}", downloadFileName);
+
+        return await response.Content.ReadAsStringAsync(ct);
+    }
 
 
     /// <summary>
@@ -76,7 +91,6 @@ public class CloudCordService(
         if (fileId is not null) content.Add(new StringContent(fileId), "fileId");
 
         var response = await _backend.PostAsync("api/files/chunked", content, ct);
-        Console.WriteLine(await response.Content.ReadAsStringAsync(ct));
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<ReadChunkDto>(ct);
@@ -90,7 +104,6 @@ public class CloudCordService(
         if (fileId is not null) content.Add(new StringContent(fileId), "fileId");
 
         var response = await _backend.PostAsync("api/files/chunked", content, ct);
-        Console.WriteLine(await response.Content.ReadAsStringAsync(ct));
         response.EnsureSuccessStatusCode();
 
         return await response.Content.ReadFromJsonAsync<ReadChunkDto>(ct);
@@ -105,6 +118,10 @@ public class CloudCordService(
     /// <returns>Stream of the file</returns>
     public async Task<Stream> Download(string fileId, CancellationToken ct) {
         return await _backend.GetStreamAsync($"api/files/{fileId}", ct);
+    }
+    
+    public async Task<Stream> DownloadSecure(string fileId, string key, CancellationToken ct) {
+        return await _backend.GetStreamAsync($"api/files/{fileId}/{key}", ct);
     }
 
     public async Task<Stream> Download(string fileId, ulong start, ulong end, CancellationToken ct) {
